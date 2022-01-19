@@ -1,0 +1,72 @@
+function 	doPost(e) {
+  try {
+    var json = JSON.parse(e.postData.contents);
+    var body = json.webhook_event.body;
+    //var body = "[info][title]【応募者】さん[/title]［ディレクター］\nhttps://corp.v1.herp.cloud/test/[/info]";
+    var roomId = ""; //TODO
+    var toList = []; //TOをつけたい人
+    var sendMsg = "";
+    //HerpURL加工処理
+    var baseUrl = "https://corp.v1.herp.cloud/"
+    const URLEND = -7;
+    var postUrl = body.slice(body.search(baseUrl),URLEND);
+    //チャット本文から通知グループ振り分け
+    var regex = /［.*?］/;
+    var group = body.match(regex);
+
+    switch (true) {
+      case group == "［開発］":
+        toList = ["[To:111]エンジニア1さん", "[To:222]エンジニア2さん"]; //TODO
+        roomId = "111111"; //TODO
+        break
+      case group == "［ディレクター］":
+        toList = ["[To:333]ディレクター1さん", "[To:444]ディレクター2さん"]; //TODO
+        roomId = "222222"; //TODO
+        break
+      case group == "［マーケティング］":
+        toList = ["[To:555]マーケター1さん", "[To:666]マーケター2さん"]; //TODO
+        roomId = "333333"; //TODO
+        break
+      default:
+      toList = ["[To:777]採用担当さん"]; 
+      sendMsg = "どの採用グループにも通知は行われませんでした。グループ設定をご確認ください。";
+      sendChatwork(sendMsg, roomId);
+      return false;
+    }
+  sendMsg = createBody(body, postUrl, toList);
+  sendChatwork(sendMsg, roomId);
+
+  } catch (e) {
+    toList = ["[To:777]採用担当さん"]; 
+    sendMsg = "エラーが発生しました、GASを確認してください。";
+    sendChatwork(sendMsg, roomId);
+    return false;
+  }
+  return true;
+}
+
+function createBody(body, postUrl, toList) {
+  var ret = "";
+  var regex = /【.*?】さん/;
+  var name = body.match(regex);
+  for (i = 0; i <= toList.length - 1; i++) {
+    ret += toList[i] + "\n";
+  }
+  ret += "[info][title]" + name + "の採用通知に更新がありました。[/title]\n";
+  ret += postUrl + "\n"+"[/info]";
+  return ret;
+}
+
+function sendChatwork(sendMsg, roomId) {
+  var token = "1234567abc"; //TODO
+  //送信データ
+  var params = {
+    headers : {"X-ChatWorkToken" : token},
+    method : "post",
+    payload : {
+      body : sendMsg
+    }
+  };
+  var url = "https://api.chatwork.com/v2/rooms/" + roomId + "/messages";
+  UrlFetchApp.fetch(url, params);
+}
